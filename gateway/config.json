@@ -1,0 +1,1 @@
+{"proxies":[{"path":"/user","auth":true,"servers":[]},{"path":"/class","auth":true,"servers":[]},{"path":"/auth","auth":false,"servers":[]}]}
