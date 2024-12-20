@@ -37,14 +37,25 @@ for (let item of servers.proxies) {
         },
         {
             proxyReqOptDecorator: function (proxyReqOpts, srcReq) {
-                if (item.auth) {
+                // if (item.auth) {
                     const token = srcReq.headers.authorization?.split(' ')[1] || '';
                     jwt.verify(token, SECRET, { algorithms: 'HS512' }, (err, decoded) => {
-                        proxyReqOpts.headers['x-forward-id'] = decoded.id;
-                        proxyReqOpts.headers['x-forward-role'] = decoded.role || 2;
+                        // console.log(decoded);
+                        
+                        proxyReqOpts.headers['x-forward-id'] = (decoded?.id === undefined) ? '-1' : decoded.id;
+                        // console.log('decoded:', decoded.role);
+                        
+                        proxyReqOpts.headers['x-forward-role'] = (decoded?.role === undefined)? '-1' : decoded.role;
                     });
-                }
+                // }
                 return proxyReqOpts;
+            },
+            userResDecorator: function (proxyRes, proxyResData, userReq, userRes) {
+                // console.log('userRes:', userRes);
+                // console.log('userReq:', userReq);
+                // console.log('proxyRes:', proxyRes);
+                // console.log('proxyResData:', proxyResData.toString());
+                return proxyResData;
             }
         }));
 }

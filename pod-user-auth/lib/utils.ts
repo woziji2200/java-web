@@ -33,5 +33,5 @@ export const cors = (options?: { headers: string[], methods: string[], origin: s
 export const errorHandler = async (err: fw.InternetError, req: fw.Request, res: fw.Response) => {
     res.statusCode = err.statusCode || 500;
     res.setHeader("Content-Type", "application/json")
-    res.end(`{"code": ${err.statusCode || 500}, "msg": "${err.message}"}`);
+    res.end(`{"code": ${err.statusCode || 500}, "message": "${err.message}"}`);
 }

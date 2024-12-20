@@ -24,7 +24,7 @@ declare interface ParamType {
     /** 默认值 */
     defaultValue?: any,
     /** 参数检查函数，如果返回false，抛出一个异常 */
-    checkFunction?: (value: any) => boolean
+    checkFunction?: (value: any) => boolean | string
 }
 interface ParamWithIndexType extends ParamType {
     index: number
@@ -40,7 +40,7 @@ declare interface BodyType {
     /** 默认值 */
     defaultValue?: any,
     /** 参数检查函数，如果返回false，抛出一个异常 */
-    checkFunction?: (value: any) => boolean
+    checkFunction?: (value: any) => boolean | string
 }
 interface BodyWithIndexType extends BodyType {
     index: number
@@ -52,13 +52,26 @@ declare interface UrlParamType {
     /** 参数名，例如/a/:id中的id */
     name: string,
     /** 参数检查函数，如果返回false，抛出一个异常 */
-    checkFunction?: (value: any) => boolean
+    checkFunction?: (value: any) => boolean | string
 }
 interface UrlParamWithIndexType extends UrlParamType {
     index: number
 }
 interface OptionsSetterWithIndexType {
     index: number,
+}
+
+/**
+ * Header参数
+ */
+declare interface HeaderParamType {
+    name: string,
+    required?: boolean,
+    defaultValue?: any,
+    checkFunction?: (value: any) => boolean | string
+}
+interface HeaderWithIndexType extends HeaderParamType {
+    index: number
 }
 export declare interface Request extends http.IncomingMessage { }
 export declare interface Response extends http.ServerResponse { }
@@ -90,6 +103,7 @@ interface RoutesType {
     req?: RequestWithIndexType[],
     res?: ResponseWithIndexType[]
     urlParams?: UrlParamWithIndexType[]
+    headers?: HeaderWithIndexType[]
 }
 export declare interface HandlerResponse {
     data: any,
@@ -129,7 +143,7 @@ function tryToString(data: any, res?: Response) {
         return ans
     } catch (e) {
         console.log(e);
-        
+
         return data;
     }
 }
@@ -219,20 +233,23 @@ export default class fw {
                 // console.log(this.__beforeRequestMiddleWire);
 
 
-                if (!route) {
+                const handlerError = (msg: string, statusCode: number) => {
                     if (this.__errorMiddleWire.length > 0) {
-                        flag = this.callMiddleWire(this.__errorMiddleWire, req, res, new Error(`Route ${method} ${pathname} not found`));
+                        flag = this.callMiddleWire(this.__errorMiddleWire, req, res, new Error(msg));
                         if (flag) return;
                     } else {
-                        res.writeHead(404, { 'Content-Type': 'text/plain;charset=utf-8' });
-                        res.statusCode = 404;
-                        res.end(`Route ${pathname} not found`);
+                        res.writeHead(statusCode, { 'Content-Type': 'text/plain;charset=utf-8' });
+                        res.statusCode = statusCode;
+                        res.end(msg);
                     }
+                }
+                if (!route) {
+                    handlerError(`Route ${method} ${pathname} not found`, 404);
                     return;
                 }
 
                 // console.log('route', route);
-                
+
                 // this.__beforeRequestMiddleWire.forEach(async (middleWire) => {
                 //     (await middleWire)(req, res);
                 // });
@@ -244,26 +261,17 @@ export default class fw {
                     for (let param of route.params) {
                         let value = params[param.name];
                         if (value === undefined && param.required) {
-                            if (this.__errorMiddleWire.length > 0) {
-                                flag = this.callMiddleWire(this.__errorMiddleWire, req, res, new Error(`Param ${param.name} is required`));
-                                if (flag) return;
-                            } else {
-                                res.writeHead(400, { 'Content-Type': 'text/plain;charset=utf-8' });
-                                res.statusCode = 400;
-                                res.end(`Param ${param.name} is required`);
-                            }
+                            handlerError(`Param ${param.name} is required`, 400);
                             return;
                         }
-                        if (param.checkFunction && !param.checkFunction(value)) {
-                            if (this.__errorMiddleWire.length > 0) {
-                                flag = this.callMiddleWire(this.__errorMiddleWire, req, res, new Error(`Param ${param.name} is invalid`));
-                                if (flag) return;
-                            } else {
-                                res.writeHead(400, { 'Content-Type': 'text/plain;charset=utf-8' });
-                                res.statusCode = 400;
-                                res.end(`Param ${param.name} is invalid`);
+                        if (param.checkFunction) {
+                            const checkResult = param.checkFunction(value);
+                            if (checkResult !== true) {
+                                const checkMessage = checkResult === false ? `Param ${param.name} is invalid` : checkResult;
+                                handlerError(checkMessage, 400);
+                                return;
                             }
-                            return;
+
                         }
                         args[param.index] = value || param.defaultValue;
                     }
@@ -282,18 +290,40 @@ export default class fw {
                     if (Object.keys(value).length !== 0) {
                         for (let body of route.bodys) {
                             if (body.required && value[body.name] === undefined) {
-                                if (this.__errorMiddleWire.length > 0) {
-                                    flag = this.callMiddleWire(this.__errorMiddleWire, req, res, new Error(`body ${body.name} is required`));
-                                    if (flag) return;
-                                } else {
-                                    res.writeHead(400, { 'Content-Type': 'text/plain;charset=utf-8' });
-                                    res.statusCode = 400;
-                                    res.end(`Body ${body.name} is required`);
-                                }
+                                handlerError(`Body ${body.name} is required`, 400);
                                 return;
+                            }
+
+                            if (body.checkFunction) {
+                                const checkResult = body.checkFunction(value[body.name]);
+                                if (checkResult !== true) {
+                                    const checkMessage = checkResult === false ? `body ${body.name} is invalid` : checkResult;
+                                    handlerError(checkMessage, 400);
+                                    return;
+                                }
                             }
                             args[body.index] = value[body.name] || body.defaultValue;
                         }
+                    }
+                }
+
+                if(route.headers){
+                    for(let header of route.headers){
+                        let value = req.headers[header.name];
+                        if (value === undefined && header.required) {
+                            handlerError(`Header ${header.name} is required`, 400);
+                            return;
+                        }
+                        if (header.checkFunction) {
+                            const checkResult = header.checkFunction(value);
+                            if (checkResult !== true) {
+                                const checkMessage = checkResult === false ? `Header ${header.name} is invalid` : checkResult;
+                                handlerError(checkMessage, 400);
+                                return;
+                            }
+
+                        }
+                        args[header.index] = value;
                     }
                 }
 
@@ -313,16 +343,14 @@ export default class fw {
                     const urlParams = getParams(route.routePath, pathname);
                     for (let urlParam of route.urlParams) {
                         let value = urlParams[urlParam.name];
-                        if (urlParam.checkFunction && !urlParam.checkFunction(value)) {
-                            if (this.__errorMiddleWire.length > 0) {
-                                flag = this.callMiddleWire(this.__errorMiddleWire, req, res, new Error(`Param ${urlParam.name} is invalid`));
-                                if (flag) return;
-                            } else {
-                                res.writeHead(400, { 'Content-Type': 'text/plain;charset=utf-8' });
-                                res.statusCode = 400;
-                                res.end(`Param ${urlParam.name} is invalid`);
+                        if (urlParam.checkFunction) {
+                            const checkResult = urlParam.checkFunction(value);
+                            if (checkResult !== true) {
+                                const checkMessage = checkResult === false ? `Param ${urlParam.name} is invalid` : checkResult;
+                                handlerError(checkMessage, 400);
+                                return;
                             }
-                            return;
+
                         }
                         args[urlParam.index] = value;
                     }
@@ -355,14 +383,7 @@ export default class fw {
                         try {
                             args[metadata.index] = customArgument.handler(req, res, metadata);
                         } catch (error: any) {
-                            if (this.__errorMiddleWire.length > 0) {
-                                flag = this.callMiddleWire(this.__errorMiddleWire, req, res, error);
-                                if (flag) return;
-                            } else {
-                                res.writeHead(500, { 'Content-Type': 'text/plain;charset=utf-8' });
-                                res.statusCode = 500;
-                                res.end(error.message);
-                            }
+                            handlerError(error.message, error.statusCode || 500);
                             return;
                         }
                     }
@@ -377,7 +398,7 @@ export default class fw {
                 if (handlerResponse !== undefined) {
                     const handlerResponseData = tryToString(handlerResponse, res);
                     // console.log(handlerResponseData);
-                    
+
                     res.end(handlerResponseData);
                 }
             })
@@ -499,6 +520,16 @@ export default class fw {
             let urlParams = Reflect.getMetadata('__urlParams', api) || [];
             urlParams.push({ name: param.name, checkFunction: param.checkFunction, index: parameterIndex });
             Reflect.defineMetadata('__urlParams', urlParams, api);
+        }
+    }
+
+
+    public header<T>(param: HeaderParamType){
+        return function (target: T, propertyKey: string, parameterIndex: number) {
+            const api = (target as any)[propertyKey];
+            let headers = Reflect.getMetadata('__headers', api) || [];
+            headers.push({ ...param, index: parameterIndex });
+            Reflect.defineMetadata('__headers', headers, api);
         }
     }
 

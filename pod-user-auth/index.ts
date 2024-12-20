@@ -11,6 +11,16 @@ export const app = new fw();
 app.registerRouter(path.join(__dirname, "router"));
 app.beforeRequest(utils.cors())
 app.beforeRequest(utils.ignoreEndSlash)
+app.beforeRequest('/admin/*', (req, res) => {
+    console.log(req.headers['x-forward-role']);
+    
+    if(req.headers['x-forward-role'] !== '0'){
+        res.statusCode = 401;
+        res.setHeader("Content-Type", "application/json")
+        res.end(`{"code": ${401}, "message": "permission denied"}`);
+        return true;
+    }
+})
 app.onError(utils.errorHandler);
 app.listen(port, () => {
     console.log(`Server started on port ${port}`);

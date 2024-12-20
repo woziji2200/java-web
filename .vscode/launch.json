@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-PodUserInfoApplication<pod-user-info>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "xyz.funny233.pod_user_info.PodUserInfoApplication",
+            "projectName": "pod-user-info",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
