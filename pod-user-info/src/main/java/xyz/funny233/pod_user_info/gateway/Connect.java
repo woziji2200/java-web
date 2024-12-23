@@ -35,7 +35,8 @@ public class Connect {
 
     @Scheduled(fixedRate = 3000)
     public void run () throws Exception {
-        HttpClient client = HttpClient.newHttpClient();
+        try {
+                   HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:3100/server/join"))
                 .header("Content-Type", "application/json")
@@ -43,6 +44,10 @@ public class Connect {
                 .build();
         // 发送请求并获取响应
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+ 
+        } catch (Exception e) {
+            System.out.println("拒绝加入节点");
+        }
 
         // 打印响应
         // System.out.println(response.body());

@@ -389,18 +389,31 @@ export default class fw {
                     }
                 }
 
-                const handlerResponse = await route.handler.apply(null, args);
+                // let handlerResponse: HandlerResponse | Promise<HandlerResponse>;
+                try {
+                    const handlerResponse = await route.handler.apply(null, args);
 
-                flag = await this.callMiddleWire(this.__afterRequestMiddleWire, req, res);
-                if (flag) return;
-
-
-                if (handlerResponse !== undefined) {
-                    const handlerResponseData = tryToString(handlerResponse, res);
-                    // console.log(handlerResponseData);
-
-                    res.end(handlerResponseData);
+                    flag = await this.callMiddleWire(this.__afterRequestMiddleWire, req, res);
+                    if (flag) return;
+    
+    
+                    if (handlerResponse !== undefined) {
+                        const handlerResponseData = tryToString(handlerResponse, res);
+                        // console.log(handlerResponseData);
+    
+                        res.end(handlerResponseData);
+                    }
+                } catch (error) {
+                    if (error instanceof InternetError) {
+                        handlerError(error.message, error.statusCode || 500);
+                        return;
+                    } else {
+                        handlerError(error as string, 500);
+                        return;    
+                    }                
                 }
+                
+
             })
         });
         this._app.listen(port, callback);

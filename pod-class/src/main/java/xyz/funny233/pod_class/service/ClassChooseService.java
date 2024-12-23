@@ -1,6 +1,7 @@
 package xyz.funny233.pod_class.service;
 
 import java.lang.classfile.ClassModel;
+import java.util.LinkedList;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,7 @@ public class ClassChooseService {
     public class ClassChooseWithClassInfo extends ClassChooseModel {
         public String name;
         public int teacherId;
+        public int credit;
     }
 
     public ClassChooseWithClassInfo[] getChoosedClass(int userId) {
@@ -37,6 +39,7 @@ public class ClassChooseService {
             result[i] = new ClassChooseWithClassInfo();
             result[i].setClassId(models[i].getClassId());
             result[i].setStudentId(models[i].getStudentId());
+            result[i].setScore(models[i].getScore());
             Optional<xyz.funny233.pod_class.model.Class1Model> classInfo = classRepository.findById((long)models[i].getClassId());
             if(classInfo.isPresent()) {
                 result[i].name = classInfo.get().getName();
@@ -44,6 +47,16 @@ public class ClassChooseService {
             }
         }
         return result;
+    }
+
+    public void deleteClass(int classId) {
+        
+        ClassChooseModel[] models = classChooseRepository.findByClassId(classId);
+        System.out.println(models);
+        for(int i = 0; i < models.length; i++) {
+            classChooseRepository.delete(models[i]);
+        }
+        // classChooseRepository
     }
 
     public String chooseClass(int userId, int classId) {
@@ -84,7 +97,7 @@ public class ClassChooseService {
     public class choosedTeacher{
         public long classId;
         public String name;
-        public student[] students; 
+        public LinkedList<student> students; 
     }
     
     public choosedTeacher[] getTeacherClass(int teacherId) {
@@ -103,16 +116,18 @@ public class ClassChooseService {
             result[i].name = classes[i].getName();
             ClassChooseModel[] students = classChooseRepository.findByClassId(classes[i].getId());
             
-            result[i].students = new student[students.length];
+            result[i].students = new LinkedList<>();
             for(int j = 0; j < students.length; j++) {
-                result[i].students[j] = new student();
-                result[i].students[j].studentId = students[j].getStudentId();
-                result[i].students[j].score = students[j].getScore();
                 for(int k = 0; k < user.length; k++) {
-                    if(user[k].id == students[j].getStudentId()) {
-                        result[i].students[j].nickname = user[k].nickname;
-                        result[i].students[j].avatar = user[k].avatar;
-                        result[i].students[j].username = user[k].username;
+                    if(user[k].id == students[j].getStudentId() && user[k].nickname != null && user[k].username != null) {
+                        student temp = new student();
+                        temp.studentId = students[j].getStudentId();
+                        temp.score = students[j].getScore();
+                        temp.nickname = user[k].nickname;
+                        temp.avatar = user[k].avatar;
+                        temp.username = user[k].username;
+                        result[i].students.add(temp);
+
                         break;
                     }
                 }
@@ -153,16 +168,24 @@ public class ClassChooseService {
             result[i].classes[0] = new choosedTeacher();
             result[i].classes[0].classId = classes[i].getId();
             result[i].classes[0].name = classes[i].getName();
-            result[i].classes[0].students = new student[students.length];
+            result[i].classes[0].students = new LinkedList<>();
             for(int j = 0; j < students.length; j++) {
-                result[i].classes[0].students[j] = new student();
-                result[i].classes[0].students[j].studentId = students[j].getStudentId();
-                result[i].classes[0].students[j].score = students[j].getScore();
+
                 for(int k = 0; k < user.length; k++) {
                     if(user[k].id == students[j].getStudentId()) {
-                        result[i].classes[0].students[j].nickname = user[k].nickname;
-                        result[i].classes[0].students[j].avatar = user[k].avatar;
-                        result[i].classes[0].students[j].username = user[k].username;
+                        // result[i].classes[0].students[j] = new student();
+                        // result[i].classes[0].students[j].studentId = students[j].getStudentId();
+                        // result[i].classes[0].students[j].score = students[j].getScore();
+                        // result[i].classes[0].students[j].nickname = user[k].nickname;
+                        // result[i].classes[0].students[j].avatar = user[k].avatar;
+                        // result[i].classes[0].students[j].username = user[k].username;
+                        student temp = new student();
+                        temp.studentId = students[j].getStudentId();
+                        temp.score = students[j].getScore();
+                        temp.nickname = user[k].nickname;
+                        temp.avatar = user[k].avatar;
+                        temp.username = user[k].username;
+                        result[i].classes[0].students.add(temp);
                         break;
                     }
                 }

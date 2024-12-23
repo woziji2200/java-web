@@ -3,8 +3,9 @@ import httpProxy from 'express-http-proxy';
 import cors from 'cors';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
+import path from 'path';
 const SECRET = process.env.SECRET || 'secret';
-
+const LOGFILE = process.env.LOGFILE || path.join('.', 'log','log.txt');
 const app = express();
 const port = process.env.PORT || 3100;
 let servers = getServersConfig()
@@ -15,6 +16,12 @@ for (let item of servers.proxies) {
     console.log('proxy:', item.path, '-->', item.servers.map(i => i.host), item.auth ? '(auth)' : '');
     if (item.auth) {
         app.use(item.path, (req, res, next) => {
+            // console.log('req.url:', req.url);
+            
+            if(req.url.startsWith('/static/avatar/')){
+                return next();
+            }
+
             const token = req.headers.authorization?.split(' ')[1] || '';
             if (token) {
                 jwt.verify(token, SECRET, { algorithms: 'HS512' }, (err, decoded) => {
@@ -38,15 +45,14 @@ for (let item of servers.proxies) {
         {
             proxyReqOptDecorator: function (proxyReqOpts, srcReq) {
                 // if (item.auth) {
-                    const token = srcReq.headers.authorization?.split(' ')[1] || '';
-                    jwt.verify(token, SECRET, { algorithms: 'HS512' }, (err, decoded) => {
-                        // console.log(decoded);
-                        
-                        proxyReqOpts.headers['x-forward-id'] = (decoded?.id === undefined) ? '-1' : decoded.id;
-                        // console.log('decoded:', decoded.role);
-                        
-                        proxyReqOpts.headers['x-forward-role'] = (decoded?.role === undefined)? '-1' : decoded.role;
-                    });
+                const token = srcReq.headers.authorization?.split(' ')[1] || '';
+                jwt.verify(token, SECRET, { algorithms: 'HS512' }, (err, decoded) => {
+                    // console.log(decoded);
+
+                    proxyReqOpts.headers['x-forward-id'] = (decoded?.id === undefined) ? '-1' : decoded.id;
+                    // console.log('decoded:', err);
+                    proxyReqOpts.headers['x-forward-role'] = (decoded?.role === undefined) ? '-1' : decoded.role;
+                });
                 // }
                 return proxyReqOpts;
             },
@@ -55,6 +61,15 @@ for (let item of servers.proxies) {
                 // console.log('userReq:', userReq);
                 // console.log('proxyRes:', proxyRes);
                 // console.log('proxyResData:', proxyResData.toString());
+                if(parseInt(proxyRes.statusCode / 100) == 5){
+                    fs.appendFileSync(LOGFILE,
+
+                        `[ERROR] ${new Date().toISOString()}   x-forward-id: ${userReq.headers['x-forward-id']}   x-forward-role: ${userReq.headers['x-forward-role']}   url: ${userReq.url}   statusCode: ${proxyRes.statusCode}\n`
+                        +`    -- RequestParams:\n${JSON.stringify(userReq.params)}\n    -- RequestBody:\n${userReq.body}\n`
+                        +`    -- Response:\n${proxyResData.toString()}\n`
+                        +`============\n`
+                    )
+                }
                 return proxyResData;
             }
         }));
@@ -95,7 +110,7 @@ app.post('/server/join', (req, res) => {
         }
         setLastLogin(server.name);
         res.json({ message: 'ok' });
-        if(!hasJoined){
+        if (!hasJoined) {
             fs.writeFileSync('./config.json', JSON.stringify(servers));
         }
 
@@ -134,18 +149,18 @@ app.listen(port, () => {
         for (let item of servers.proxies) {
             item.servers = item.servers.filter(i => {
                 const expired = new Date().getTime() - new Date(getLastLogin(i.name)).getTime() >= 1000 * 10;
-                if(expired){
+                if (expired) {
                     console.log(`${new Date().toISOString()}   ${i.name} (${i.host}) disconnected`);
                     isFiltered = true;
                 }
                 return !expired;
             });
         }
-        
+
         // console.log('servers:', servers);
         // console.log('serversCopy:', serversCopy);
-        
-        
+
+
         if (isFiltered) {
             fs.writeFileSync('./config.json', JSON.stringify(servers));
             console.log('servers updated');
@@ -158,13 +173,13 @@ function getServersConfig() {
     return JSON.parse(fs.readFileSync('./config.json'));
 }
 
-function setLastLogin(name){
+function setLastLogin(name) {
     // save to local
     const lastLogin = JSON.parse(fs.readFileSync('./lastLogin.json'));
     lastLogin[name] = new Date().toISOString();
     fs.writeFileSync('./lastLogin.json', JSON.stringify(lastLogin));
 }
-function getLastLogin(name){
+function getLastLogin(name) {
     // save to local
     const lastLogin = JSON.parse(fs.readFileSync('./lastLogin.json'));
     return lastLogin[name];

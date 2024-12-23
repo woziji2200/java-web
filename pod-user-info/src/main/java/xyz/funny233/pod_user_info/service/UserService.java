@@ -28,8 +28,14 @@ public class UserService {
         if(user == null) {
             user = new UserModel();
             user.setUserId(userId);
+            user.setNickname(String.valueOf(userId));
             userRepository.save(user);
             return user;
+        }
+        // System.out.println(user.getNickname().equals("") || user.getNickname() == null);
+        if(user.getNickname() == null || user.getNickname().equals("")) {
+            user.setNickname(String.valueOf(userId));
+            userRepository.save(user);
         }
         return userRepository.findByUserId(userId);
     }

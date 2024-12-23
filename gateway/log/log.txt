@@ -1,0 +1,20 @@
+[ERROR] 2024-12-23T09:35:45.186Z   x-forward-id: undefined   x-forward-role: undefined   url: /error?123=123   statusCode: 500
+    -- RequestParams:
+{}
+    -- RequestBody:
+{
+    "qwq": 123
+}
+    -- Response:
+{"code": 500, "message": "服务器错误"}
+============
+[ERROR] 2024-12-23T09:35:51.880Z   x-forward-id: undefined   x-forward-role: undefined   url: /error?123=123   statusCode: 500
+    -- RequestParams:
+{}
+    -- RequestBody:
+{
+    "qwq": 123
+}
+    -- Response:
+{"code": 500, "message": "服务器错误"}
+============

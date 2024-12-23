@@ -4,7 +4,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import xyz.funny233.pod_class.gateway.RPC;
+import xyz.funny233.pod_class.gateway.RPC.User;
 import xyz.funny233.pod_class.model.Class1Model;
+import xyz.funny233.pod_class.service.ClassChooseService;
 import xyz.funny233.pod_class.service.ClassService;
 
 import java.io.File;
@@ -34,6 +36,9 @@ public class ClassController {
     @Autowired
     ClassService classService;
 
+    @Autowired
+    RPC rpc;
+
     @GetMapping("/class")
     public ResponseEntity<Response> getCLass() {
         return ResponseEntity.ok().body(new Response(200, "success", classService.getAllClass()));
@@ -61,13 +66,23 @@ public class ClassController {
             return ResponseEntity.badRequest().body(new Response(400, "class not found", null));
         }
         var name = body.get("name");
-        var teacherId = body.get("teacherId");
+        var teacherUsername = body.get("teacherUsername");
         var credit = body.get("credit");
         if (name != null) {
             entity.setName(name);
         }
-        if (teacherId != null) {
-            entity.setTeacherId(Integer.parseInt(teacherId));
+        if (teacherUsername != null) {
+            try {
+                User users[] = rpc.fetchUsers();
+                for (int i = 0; i < users.length; i++) {
+                    if (users[i].username.equals(teacherUsername)) {
+                        entity.setTeacherId(users[i].userId);
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                // TODO: handle exception
+            }            
         }
         if (credit != null) {
             entity.setCredit(Integer.parseInt(credit));
@@ -90,11 +105,31 @@ public class ClassController {
 
         var entity = new Class1Model();
         entity.setName(body.get("name"));
-        entity.setTeacherId(Integer.parseInt(body.get("teacherId")));
+        // entity.setTeacherId(Integer.parseInt(body.get("teacherId")));
+        try {
+            User users[] = rpc.fetchUsers();
+            boolean flag = false;
+            for (int i = 0; i < users.length; i++) {
+                // System.out.println(users[i].username + " " + body.get("teacherUsername"));
+                if (users[i].username.equals(body.get("teacherUsername"))) {
+                    entity.setTeacherId(users[i].id);
+                    flag = true;
+                    break;
+                }
+            }
+            if (!flag) {
+                return ResponseEntity.badRequest().body(new Response(400, "teacher not exists", null));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new Response(400, "teacher not exists", null));
+        }
         entity.setCredit(Integer.parseInt(body.get("credit")));
         classService.addClass(entity);
         return ResponseEntity.ok().body(new Response(200, "success", entity));
     }
+
+    @Autowired
+    private ClassChooseService classChooseService;
 
     @DeleteMapping("/class/{id}")
     public ResponseEntity<Response> deleteClass(@PathVariable long id,
@@ -107,6 +142,7 @@ public class ClassController {
             return ResponseEntity.badRequest().body(new Response(400, "class not found", null));
         }
         classService.deleteClass(id);
+        classChooseService.deleteClass((int) id);
         return ResponseEntity.ok().body(new Response(200, "success", null));
     }
 

@@ -4,7 +4,7 @@ import path from "path";
 
 const port = parseInt(process.env.PORT || "") || 3001;
 const localhost = process.env.LOCALHOST || "localhost";
-const gateway = process.env.GATEWAY || "http://localhost:3100";
+export const gateway = process.env.GATEWAY || "http://localhost:3100";
 const podName = `user-node-${Math.floor(Math.random() * 1000)}`;
 
 export const app = new fw();

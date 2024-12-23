@@ -17,6 +17,10 @@ public class Class1Model {
     private int teacherId;
     private int credit;
 
+    public void setId(long id) {
+        this.id = id;
+    }
+
     public long getId() {
         return id;
     }

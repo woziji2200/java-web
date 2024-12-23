@@ -1,5 +1,5 @@
 import { app } from "..";
-import { OptionsSetter } from "../lib/core";
+import { InternetError, OptionsSetter } from "../lib/core";
 import sequelize from "../database/database";
 import { User } from "../database/database";
 import { md5 } from "js-md5";
@@ -99,5 +99,28 @@ class user {
             data: users.map(user => user.dataValues)
                 .map(user => { delete user.password; return user; })
         };
+    }
+
+
+    @app.post('/changePassword')
+    async changePassword(
+        @app.body({ name: 'username', required: true }) username: number,
+        @app.body({ name: 'oldPassword', required: true }) oldPassword: string,
+        @app.body({ name: 'newPassword', required: true }) newPassword: string,
+        @app.optionsSetter() optionsSetter: OptionsSetter
+    ) {
+        const user = await User.findOne({ where: { username, password: md5(oldPassword + SALT) } });
+        if (user) {
+            await user.update({ password: md5(newPassword + SALT) });
+            return { code: 200, message: '修改成功' };
+        } else {
+            optionsSetter.setStatusCode(401);
+            return { code: 401, message: '修改失败，原密码错误' };
+        }
+    }
+
+    @app.get('/error')
+    error() {
+        throw new InternetError('服务器错误', 500);
     }
 }
